@@ -10,7 +10,7 @@ public class AllITBooksCrawler {
 
 
     public static void main(String[] args) {
-        IndexPageSupplier supplier = new IndexPageSupplier("http://www.allitebooks.com/page/", 2, 3);
+        IndexPageSupplier supplier = new IndexPageSupplier("http://www.allitebooks.com/page/", 2, 2);
         List<String> a = supplier.get();
         System.out.println(a);
         supplier.get().stream().forEach(System.out::println);
