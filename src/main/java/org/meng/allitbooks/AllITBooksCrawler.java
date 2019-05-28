@@ -1,27 +1,38 @@
 package org.meng.allitbooks;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
+@Slf4j
 public class AllITBooksCrawler {
-//    private static ExecutorService pool = Executors.newFixedThreadPool(5);
-
-
-    public static void main(String[] args) {
-        IndexPageSupplier supplier = new IndexPageSupplier("http://www.allitebooks.com/page/", 2, 2);
-        List<String> a = supplier.get();
-        System.out.println(a);
-        supplier.get().stream().forEach(System.out::println);
-        List<String> pdfURLs = supplier.get().stream()
-                .flatMap(indexURL -> Optional.ofNullable((new IndexPageParser()).parsePage(indexURL))
-                        .map(urls -> urls.stream())
-                        .orElseGet(Stream::empty))
-                .map(pageURL -> new DetailPageParser().parsePage(pageURL))
-                .collect(Collectors.toList());
-
-        System.out.println(pdfURLs);
+    public static void main(String[] args) throws InterruptedException {
+        BlockingQueue<String> indexLinkQueue = new LinkedBlockingQueue<>(5);
+        BlockingQueue<String> detailLinkQueue = new LinkedBlockingQueue<>();
+        BlockingQueue<String> pdfLinkQueue = new LinkedBlockingQueue<>();
+        IndexPageParser indexPageParser = new IndexPageParser();
+        DetailPageParser detailPageParser = new DetailPageParser();
+        new Thread(() -> {
+            IndexPageSupplier indexPageSupplier = new IndexPageSupplier("http://www.allitebooks.com/page/", 1, 15);
+            List<String> indexUrls = indexPageSupplier.get();
+            indexUrls.add("N/A");
+            indexUrls.forEach(indexUrl -> {
+                try {
+                    indexLinkQueue.put(indexUrl);
+                } catch (InterruptedException e) {
+                    log.error("put index url to outputQueue interrupted");
+                }
+            });
+        }).start();
+        ThreadPoolPageExecutor indexPageExecutor = new ThreadPoolPageExecutor(indexPageParser, indexLinkQueue, detailLinkQueue, 5);
+        ThreadPoolPageExecutor detailPageExecutor = new ThreadPoolPageExecutor(detailPageParser, detailLinkQueue, pdfLinkQueue, 3);
+        new Thread(() -> indexPageExecutor.start()).start();
+        new Thread(() -> detailPageExecutor.start()).start();
+        Thread.sleep(60 * 1000);
+        indexPageExecutor.stop();
+        detailPageExecutor.stop();
     }
 
 
