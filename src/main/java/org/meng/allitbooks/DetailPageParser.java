@@ -16,7 +16,8 @@ public class DetailPageParser implements PageParser<String> {
         }
         return PageHelper.getPageContent(url)
                 .flatMap(doc -> Optional.ofNullable(doc.selectFirst("main#main-content span.download-links a")))
-                .filter(e -> e != null && e.attr("href") != null && e.attr("href").endsWith(".pdf"))
+                .filter(e -> e != null && e.attr("href") != null && (e.attr("href").endsWith(".pdf")
+                        || e.attr("href").endsWith(".epub")))
                 .map(e -> e.attr("href"))
                 .orElse(null);
     }

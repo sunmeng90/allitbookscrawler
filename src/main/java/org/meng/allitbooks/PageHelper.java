@@ -1,10 +1,12 @@
 package org.meng.allitbooks;
 
+import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -46,5 +48,37 @@ public class PageHelper {
         } catch (IOException e) {
             logger.error("Can not download and save file {} from url {}. Reason: ", name, url, e);
         }
+    }
+
+
+    public static void downloadFileByJsoup(String url, String name, final String path) {
+        if (name == null && url != null) {
+            name = URLDecoder.decode(url.substring(url.lastIndexOf("/") + 1));
+        }
+        Connection.Response resp = null;
+        try {
+            resp = Jsoup.connect(url)
+                    .ignoreContentType(true)
+                    .method(Connection.Method.GET)
+                    .followRedirects(false)
+                    .timeout(0)
+                    .maxBodySize(0)
+                    .execute();
+        } catch (IOException e) {
+            logger.error("Can't read data from server");
+            return;
+        }
+        try (InputStream is = resp.bodyStream();
+             FileOutputStream fos = new FileOutputStream(path + name);
+             BufferedOutputStream bos = new BufferedOutputStream(fos);) {
+            byte[] buffer = new byte[4096];
+            int len = 0;
+            while ((len = is.read(buffer)) != -1) {
+                bos.write(buffer, 0, len);
+            }
+        } catch (IOException e) {
+            logger.error("Can not download and save file {} from url {}. Reason: ", name, url, e);
+        }
+
     }
 }

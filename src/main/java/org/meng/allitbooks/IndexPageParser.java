@@ -26,5 +26,4 @@ public class IndexPageParser implements PageParser<List<String>> {
                 .map(e -> e.attr("href"))
                 .collect(Collectors.toList());
     }
-
 }
