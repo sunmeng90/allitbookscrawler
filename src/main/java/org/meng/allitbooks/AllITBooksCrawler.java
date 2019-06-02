@@ -1,9 +1,11 @@
 package org.meng.allitbooks;
 
 import lombok.extern.slf4j.Slf4j;
+import org.meng.allitbooks.task.CancellableTaskExecutor;
 
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.LinkedBlockingQueue;
 
 @Slf4j
@@ -28,11 +30,15 @@ public class AllITBooksCrawler {
         }).start();
         ThreadPoolPageExecutor indexPageExecutor = new ThreadPoolPageExecutor(indexPageParser, indexLinkQueue, detailLinkQueue, 5);
         ThreadPoolPageExecutor detailPageExecutor = new ThreadPoolPageExecutor(detailPageParser, detailLinkQueue, pdfLinkQueue, 3);
-        new Thread(() -> indexPageExecutor.start()).start();
-        new Thread(() -> detailPageExecutor.start()).start();
+        CancellableTaskExecutor cancellableIndexTaskExecutor = new CancellableTaskExecutor(indexPageExecutor);
+        CancellableTaskExecutor cancellableDetailTaskExecutor = new CancellableTaskExecutor(detailPageExecutor);
+        FutureTask<Object> indexCancellableTask = cancellableIndexTaskExecutor.newTask();
+        new Thread(indexCancellableTask).start();
+        FutureTask<Object> detailCancellableTask = cancellableDetailTaskExecutor.newTask();
+        new Thread(detailCancellableTask).start();
         Thread.sleep(60 * 1000);
-        indexPageExecutor.stop();
-        detailPageExecutor.stop();
+        indexCancellableTask.cancel(true);
+        detailCancellableTask.cancel(true);
     }
 
 

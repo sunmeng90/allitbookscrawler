@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.function.Function;
@@ -27,17 +26,19 @@ public class ThreadPoolPageExecutor<T> {
         this.indexPageParser = indexPageParser;
         this.inputQueue = inputQueue;
         this.outputQueue = outputQueue;
-        this.semaphore = new Semaphore(semaphore);
+        this.semaphore = new Semaphore(semaphore == 0 ? 5 : semaphore);
     }
 
     public void stop() throws InterruptedException {
-        executorService.shutdown();
-        executorService.awaitTermination(5, TimeUnit.MINUTES);
+        executorService.shutdownNow();
+        executorService.awaitTermination(1, TimeUnit.MINUTES);
+        log.info("current thread {} will interrupt", Thread.currentThread().getName());
         print();
     }
 
 
-    public void start() {
+    public void start() throws InterruptedException {
+            log.info("Start pool executor in thread {}", Thread.currentThread().getName());
             while (true) {
                 final String inputUrl = consume();
                 if (StringUtils.isBlank(inputUrl)) {
@@ -88,13 +89,13 @@ public class ThreadPoolPageExecutor<T> {
         }
     }
 
-    private String consume() {
+    private String consume() throws InterruptedException {
         try {
             return inputQueue.take();
         } catch (InterruptedException e) {
-            log.error("Take index url interrupted", e);
+            log.error("Consume url interrupted", e);
+            throw e;
         }
-        return null;
     }
 
     public void print() {
